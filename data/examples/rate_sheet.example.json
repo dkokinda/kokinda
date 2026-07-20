@@ -1,0 +1,18 @@
+{
+  "property_name": "The Ritz-Carlton, Grand Cayman",
+  "season_label": "Winter Season",
+  "valid_from": "2026-12-15",
+  "valid_to": "2027-04-15",
+  "room_types": [
+    { "name": "Deluxe Ocean View", "description": "King or two doubles, private balcony", "max_occupancy": 4, "rate": "$895", "rate_basis": "per night" },
+    { "name": "Grand Suite", "description": "Separate living area, ocean view", "max_occupancy": 4, "rate": "$1,650", "rate_basis": "per night" }
+  ],
+  "packages": [
+    {
+      "name": "Romance Package",
+      "description": "Includes couples spa treatment and private dinner",
+      "rate": "$2,400",
+      "inclusions": ["2-night stay", "60-min couples massage", "Private beach dinner"]
+    }
+  ]
+}

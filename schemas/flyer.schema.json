@@ -1,0 +1,17 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Event / Promo Flyer",
+  "type": "object",
+  "required": ["title", "date_range"],
+  "properties": {
+    "title": { "type": "string" },
+    "subtitle": { "type": "string" },
+    "date_range": { "type": "string" },
+    "location": { "type": "string" },
+    "description": { "type": "string" },
+    "price": { "type": "string" },
+    "call_to_action": { "type": "string" },
+    "contact": { "type": "string" },
+    "hero_image_asset": { "type": "string" }
+  }
+}

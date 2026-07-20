@@ -1,0 +1,21 @@
+{
+  "outlet_name": "In-Room Dining",
+  "service_hours": "6:00 AM - 11:00 PM",
+  "sections": [
+    {
+      "heading": "Starters",
+      "items": [
+        { "name": "Conch Fritters", "description": "Local conch, sweet chili aioli", "price": "$22", "dietary_tags": ["gf"] },
+        { "name": "Caesar Salad", "description": "Baby gem, parmesan, brioche crouton", "price": "$18", "dietary_tags": ["v"] }
+      ]
+    },
+    {
+      "heading": "Entrees",
+      "items": [
+        { "name": "Grilled Mahi Mahi", "description": "Local catch, citrus beurre blanc", "price": "$46", "dietary_tags": ["gf"] },
+        { "name": "Prime Burger", "description": "Aged cheddar, brioche bun", "price": "$32" }
+      ]
+    }
+  ],
+  "footnote": "A 24% service charge and applicable taxes will be added."
+}
