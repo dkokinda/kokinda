@@ -1,5 +1,7 @@
 'use strict';
 
+require('dotenv').config();
+
 const express = require('express');
 const { ConversationStore } = require('./store/conversationStore');
 const { BlueBubblesClient } = require('./bluebubbles/client');
@@ -50,10 +52,15 @@ function createApp({ store, bluebubbles, responder, webhookToken } = {}) {
 
 if (require.main === module) {
   const port = process.env.PORT || 3000;
-  const app = createApp();
-  app.listen(port, () => {
-    console.log(`iMessage bot listening on port ${port}`);
-  });
+  try {
+    const app = createApp();
+    app.listen(port, () => {
+      console.log(`iMessage bot listening on port ${port}`);
+    });
+  } catch (err) {
+    console.error('Failed to start iMessage bot:', err.message);
+    process.exit(1);
+  }
 }
 
 module.exports = { createApp };
