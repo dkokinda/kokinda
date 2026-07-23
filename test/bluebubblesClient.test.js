@@ -28,7 +28,34 @@ test('sends a text message via the BlueBubbles REST API', async () => {
   const body = JSON.parse(calls[0].options.body);
   assert.equal(body.chatGuid, 'chat-1');
   assert.equal(body.message, 'hello there');
+  assert.equal(body.method, 'apple-script');
+});
+
+test('uses private-api as the send method when configured', async () => {
+  const calls = [];
+  const fakeFetch = async (url, options) => {
+    calls.push({ url, options });
+    return { ok: true, json: async () => ({ status: 200 }) };
+  };
+
+  const client = new BlueBubblesClient({
+    serverUrl: 'http://localhost:1234',
+    password: 'secret',
+    sendMethod: 'private-api',
+    fetchImpl: fakeFetch,
+  });
+
+  await client.sendMessage('chat-1', 'hi');
+
+  const body = JSON.parse(calls[0].options.body);
   assert.equal(body.method, 'private-api');
+});
+
+test('rejects an unknown sendMethod', () => {
+  assert.throws(
+    () => new BlueBubblesClient({ serverUrl: 'http://localhost:1234', password: 'secret', sendMethod: 'carrier-pigeon' }),
+    /Invalid BlueBubbles sendMethod/,
+  );
 });
 
 test('throws with the response body on a non-ok response', async () => {
