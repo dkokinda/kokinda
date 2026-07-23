@@ -122,6 +122,89 @@ test('keeps separate conversation history per chat', async () => {
   assert.equal(store.getHistory('chat-B').length, 2);
 });
 
+test('allowlist: replies to a contact on the list', async () => {
+  const store = new ConversationStore();
+  const responder = makeFakeResponder('hey!');
+  const bluebubbles = makeFakeBluebubbles();
+  const app = createApp({
+    store,
+    responder,
+    bluebubbles,
+    webhookToken: 'secret',
+    allowedContacts: ['+15555550123'],
+  });
+
+  const res = await request(app)
+    .post('/webhook/bluebubbles?token=secret')
+    .send({
+      type: 'new-message',
+      data: {
+        text: 'hi',
+        isFromMe: false,
+        handle: { address: '+15555550123' },
+        chats: [{ guid: 'chat-allowed' }],
+      },
+    });
+
+  assert.equal(res.status, 200);
+  assert.equal(res.body.handled, true);
+  assert.equal(bluebubbles.sent.length, 1);
+});
+
+test('allowlist: ignores a contact not on the list', async () => {
+  const store = new ConversationStore();
+  const responder = makeFakeResponder('should not be called');
+  const bluebubbles = makeFakeBluebubbles();
+  const app = createApp({
+    store,
+    responder,
+    bluebubbles,
+    webhookToken: 'secret',
+    allowedContacts: ['+15555550123'],
+  });
+
+  const res = await request(app)
+    .post('/webhook/bluebubbles?token=secret')
+    .send({
+      type: 'new-message',
+      data: {
+        text: 'hi',
+        isFromMe: false,
+        handle: { address: '+19998887777' },
+        chats: [{ guid: 'chat-blocked' }],
+      },
+    });
+
+  assert.equal(res.status, 200);
+  assert.equal(res.body.handled, false);
+  assert.equal(res.body.reason, 'sender-not-allowed');
+  assert.equal(bluebubbles.sent.length, 0);
+  assert.deepEqual(store.getHistory('chat-blocked'), []);
+});
+
+test('allowlist: replies to everyone when unset (default)', async () => {
+  const store = new ConversationStore();
+  const responder = makeFakeResponder('hey!');
+  const bluebubbles = makeFakeBluebubbles();
+  const app = createApp({ store, responder, bluebubbles, webhookToken: 'secret' });
+
+  const res = await request(app)
+    .post('/webhook/bluebubbles?token=secret')
+    .send({
+      type: 'new-message',
+      data: {
+        text: 'hi',
+        isFromMe: false,
+        handle: { address: '+19998887777' },
+        chats: [{ guid: 'chat-anyone' }],
+      },
+    });
+
+  assert.equal(res.status, 200);
+  assert.equal(res.body.handled, true);
+  assert.equal(bluebubbles.sent.length, 1);
+});
+
 test('health endpoint reports ok', async () => {
   const app = createApp({
     store: new ConversationStore(),

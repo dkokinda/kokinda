@@ -7,8 +7,9 @@ const { ConversationStore } = require('./store/conversationStore');
 const { BlueBubblesClient } = require('./bluebubbles/client');
 const { ClaudeResponder } = require('./anthropic/responder');
 const { BlueBubblesWebhookHandler } = require('./webhook/handler');
+const { parseAllowedContacts } = require('./webhook/allowlist');
 
-function createApp({ store, bluebubbles, responder, webhookToken } = {}) {
+function createApp({ store, bluebubbles, responder, webhookToken, allowedContacts } = {}) {
   const app = express();
   app.use(express.json());
 
@@ -22,11 +23,14 @@ function createApp({ store, bluebubbles, responder, webhookToken } = {}) {
     });
   const resolvedResponder = responder || new ClaudeResponder();
   const resolvedToken = webhookToken !== undefined ? webhookToken : process.env.WEBHOOK_TOKEN;
+  const resolvedAllowedContacts =
+    allowedContacts !== undefined ? allowedContacts : parseAllowedContacts(process.env.ALLOWED_CONTACTS);
 
   const handler = new BlueBubblesWebhookHandler({
     store: resolvedStore,
     responder: resolvedResponder,
     bluebubbles: resolvedBluebubbles,
+    allowedContacts: resolvedAllowedContacts,
   });
 
   app.get('/health', (req, res) => {

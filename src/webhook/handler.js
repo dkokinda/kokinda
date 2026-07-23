@@ -1,5 +1,7 @@
 'use strict';
 
+const { isContactAllowed } = require('./allowlist');
+
 function isTrustworthyIncomingMessage(data) {
   return (
     Boolean(data) &&
@@ -16,16 +18,28 @@ function extractChatGuid(data) {
   return null;
 }
 
+function extractSenderAddress(data) {
+  if (data.handle && typeof data.handle.address === 'string') {
+    return data.handle.address;
+  }
+  return null;
+}
+
 /**
  * Handles BlueBubbles "new-message" webhook events: appends the incoming
  * text to that chat's history, asks Claude for a reply grounded in the
  * conversation so far, then sends the reply back through BlueBubbles.
+ *
+ * `allowedContacts` (normalized handle addresses — see allowlist.js)
+ * restricts replies to specific contacts. Leave it empty to reply to
+ * everyone (the default).
  */
 class BlueBubblesWebhookHandler {
-  constructor({ store, responder, bluebubbles }) {
+  constructor({ store, responder, bluebubbles, allowedContacts = [] }) {
     this.store = store;
     this.responder = responder;
     this.bluebubbles = bluebubbles;
+    this.allowedContacts = allowedContacts;
   }
 
   async handleEvent(event) {
@@ -43,6 +57,11 @@ class BlueBubblesWebhookHandler {
       return { handled: false, reason: 'missing-chat-guid' };
     }
 
+    const senderAddress = extractSenderAddress(data);
+    if (!isContactAllowed(senderAddress, this.allowedContacts)) {
+      return { handled: false, reason: 'sender-not-allowed' };
+    }
+
     this.store.appendMessage(chatGuid, 'user', data.text);
 
     const reply = await this.responder.generateReply(this.store.getHistory(chatGuid));
@@ -55,4 +74,9 @@ class BlueBubblesWebhookHandler {
   }
 }
 
-module.exports = { BlueBubblesWebhookHandler, isTrustworthyIncomingMessage, extractChatGuid };
+module.exports = {
+  BlueBubblesWebhookHandler,
+  isTrustworthyIncomingMessage,
+  extractChatGuid,
+  extractSenderAddress,
+};

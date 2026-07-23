@@ -11,6 +11,16 @@ A Node.js/Express service that responds to incoming iMessages with unique, conte
 3. `npm install`
 4. `npm start`
 
+### Restricting who it replies to
+
+By default the bot replies to every incoming message. To limit it to specific people, set `ALLOWED_CONTACTS` in `.env` to a comma-separated list of phone numbers (E.164 format, e.g. `+15555550123`) and/or email addresses — whatever form BlueBubbles reports for that contact's iMessage handle:
+
+```
+ALLOWED_CONTACTS=+15555550123,someone@example.com
+```
+
+Messages from anyone not on the list are ignored entirely (no reply, no history kept). Leave it blank to keep replying to everyone.
+
 ### Tests
 
 `npm test` runs the `node:test` suite (mocked BlueBubbles/Claude clients — no live credentials needed).
