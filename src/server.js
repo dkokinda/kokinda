@@ -18,6 +18,7 @@ function createApp({ store, bluebubbles, responder, webhookToken } = {}) {
     new BlueBubblesClient({
       serverUrl: process.env.BLUEBUBBLES_SERVER_URL,
       password: process.env.BLUEBUBBLES_PASSWORD,
+      sendMethod: process.env.BLUEBUBBLES_SEND_METHOD,
     });
   const resolvedResponder = responder || new ClaudeResponder();
   const resolvedToken = webhookToken !== undefined ? webhookToken : process.env.WEBHOOK_TOKEN;
