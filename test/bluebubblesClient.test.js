@@ -29,6 +29,28 @@ test('sends a text message via the BlueBubbles REST API', async () => {
   assert.equal(body.chatGuid, 'chat-1');
   assert.equal(body.message, 'hello there');
   assert.equal(body.method, 'apple-script');
+  assert.equal(typeof body.tempGuid, 'string');
+  assert.ok(body.tempGuid.length > 0, 'tempGuid must be a non-empty string (required by BlueBubbles for apple-script sends)');
+});
+
+test('generates a unique tempGuid per send', async () => {
+  const calls = [];
+  const fakeFetch = async (url, options) => {
+    calls.push({ url, options });
+    return { ok: true, json: async () => ({ status: 200 }) };
+  };
+
+  const client = new BlueBubblesClient({
+    serverUrl: 'http://localhost:1234',
+    password: 'secret',
+    fetchImpl: fakeFetch,
+  });
+
+  await client.sendMessage('chat-1', 'first');
+  await client.sendMessage('chat-1', 'second');
+
+  const [first, second] = calls.map((call) => JSON.parse(call.options.body).tempGuid);
+  assert.notEqual(first, second);
 });
 
 test('uses private-api as the send method when configured', async () => {

@@ -1,5 +1,7 @@
 'use strict';
 
+const { randomUUID } = require('node:crypto');
+
 const VALID_SEND_METHODS = new Set(['apple-script', 'private-api']);
 
 /**
@@ -31,6 +33,7 @@ class BlueBubblesClient {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         chatGuid,
+        tempGuid: randomUUID(),
         message,
         method: this.sendMethod,
       }),
