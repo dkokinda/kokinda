@@ -55,12 +55,38 @@ explicit plan id instead. If app-only returns `403` on Planner endpoints, fall
 back to `device_code` — Planner's application-permission support is narrower
 than its delegated support.
 
+## The tracker
+
+`http://localhost:3100/` serves a project tracker backed by the plan you pick:
+projects grouped into category sections, each with a status control, a due date,
+a category selector, and notes with dated status updates. Overdue items are
+counted and flagged.
+
+The page is served **from this service**, not hosted elsewhere, and that is the
+whole point. A page on another origin cannot call this API from a browser, so
+its buttons would be decoration. Same origin means every control issues a real
+`PATCH` and the change lands in Planner.
+
+Field mapping, since Planner's own vocabulary differs:
+
+| Tracker | Planner |
+| --- | --- |
+| Project | task |
+| Category | bucket |
+| Status | `percentComplete` (0 / 50 / 100) |
+| Due date | `dueDateTime` |
+| Notes, status updates | task details `description` |
+
+Status updates are prepended to the notes with an ISO date, newest first, so a
+project carries its own history rather than only its current state.
+
 ## Endpoints
 
 | Method | Path | Notes |
 | --- | --- | --- |
 | `GET` | `/health` | No Graph call |
 | `GET` | `/me` | Confirms which identity the token carries |
+| `GET` | `/api/board/:planId` | Plan + buckets + tasks in one call; `?includeDetails=true` adds notes |
 | `GET` | `/api/plans` | Signed-in user's plans; `?groupId=` scopes to a group |
 | `GET` | `/api/plans/:planId` | |
 | `GET` | `/api/plans/:planId/buckets` | |

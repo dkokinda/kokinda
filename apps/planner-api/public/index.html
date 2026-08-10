@@ -1,0 +1,388 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Project tracker</title>
+<style>
+  :root {
+    --bg: #f6f7f9;
+    --card: #ffffff;
+    --ink: #16181d;
+    --muted: #6b7280;
+    --line: #e3e6ea;
+    --accent: #2f6feb;
+    --ok: #1a7f4b;
+    --warn: #a8620b;
+    --late: #c0392b;
+    --chip: #eef1f5;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14161a;
+      --card: #1c1f25;
+      --ink: #e8eaed;
+      --muted: #9aa1ac;
+      --line: #2b3038;
+      --accent: #5b8df5;
+      --ok: #4ec98a;
+      --warn: #e0a458;
+      --late: #f0736a;
+      --chip: #262b33;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 24px;
+    font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    background: var(--bg); color: var(--ink);
+  }
+  header { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 20px; }
+  h1 { font-size: 20px; margin: 0; font-weight: 650; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 26px 0 10px; }
+  select, input, textarea, button { font: inherit; color: inherit; }
+  select, input, textarea {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 7px; padding: 6px 8px;
+  }
+  textarea { width: 100%; resize: vertical; min-height: 64px; }
+  button {
+    background: var(--card); border: 1px solid var(--line); border-radius: 7px;
+    padding: 6px 11px; cursor: pointer;
+  }
+  button:hover:not(:disabled) { border-color: var(--accent); }
+  button:disabled { opacity: .5; cursor: default; }
+  button.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.link { border: 0; background: none; color: var(--accent); padding: 4px 0; }
+  .card {
+    background: var(--card); border: 1px solid var(--line); border-radius: 11px;
+    padding: 14px 16px; margin-bottom: 10px;
+  }
+  .row { display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; }
+  .title { font-weight: 600; flex: 1 1 240px; }
+  .title.done { text-decoration: line-through; color: var(--muted); }
+  .chip {
+    background: var(--chip); border-radius: 99px; padding: 2px 10px;
+    font-size: 12px; color: var(--muted);
+  }
+  .chip.due-soon { color: var(--warn); }
+  .chip.overdue { color: var(--late); font-weight: 600; }
+  .chip.done { color: var(--ok); }
+  .controls { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-top: 10px; }
+  .group { display: inline-flex; }
+  .group button { border-radius: 0; margin-left: -1px; }
+  .group button:first-child { border-radius: 7px 0 0 7px; margin-left: 0; }
+  .group button:last-child { border-radius: 0 7px 7px 0; }
+  .notes { margin-top: 12px; border-top: 1px solid var(--line); padding-top: 12px; }
+  .notes pre {
+    margin: 0 0 8px; white-space: pre-wrap; font: inherit;
+    color: var(--muted); max-height: 220px; overflow: auto;
+  }
+  .muted { color: var(--muted); }
+  .err {
+    background: var(--late); color: #fff; padding: 10px 14px;
+    border-radius: 8px; margin-bottom: 14px; white-space: pre-wrap;
+  }
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Project tracker</h1>
+  <select id="plan"></select>
+  <button id="refresh">Refresh</button>
+  <span id="saving" class="muted hidden">saving…</span>
+</header>
+
+<div id="error" class="err hidden"></div>
+
+<div class="card">
+  <div class="row">
+    <input id="new-title" placeholder="New project" style="flex:1 1 260px">
+    <select id="new-bucket"></select>
+    <input id="new-due" type="date">
+    <button id="add">Add</button>
+  </div>
+</div>
+
+<div id="board"></div>
+
+<script>
+const $ = (sel) => document.querySelector(sel);
+let state = { planId: null, buckets: [], tasks: [], details: {} };
+
+function showError(err) {
+  $('#error').textContent = String(err.message ?? err);
+  $('#error').classList.remove('hidden');
+}
+function clearError() { $('#error').classList.add('hidden'); }
+
+async function api(path, options = {}) {
+  const res = await fetch(path, {
+    ...options,
+    headers: options.body ? { 'content-type': 'application/json' } : undefined,
+  });
+  if (res.status === 204) return null;
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    // Surface Graph's own words — "precondition failed", "insufficient
+    // privileges" — instead of a generic failure.
+    throw new Error(json.message || json.error || `${res.status} ${res.statusText}`);
+  }
+  return json;
+}
+
+/** Wraps a write so the page shows progress and never dies on a rejection. */
+async function write(fn) {
+  $('#saving').classList.remove('hidden');
+  clearError();
+  try {
+    await fn();
+  } catch (err) {
+    showError(err);
+  } finally {
+    $('#saving').classList.add('hidden');
+  }
+}
+
+const statusOf = (task) =>
+  task.percentComplete === 100 ? 'done' : task.percentComplete > 0 ? 'doing' : 'todo';
+
+function dueChip(task) {
+  if (!task.dueDateTime) return null;
+  const due = new Date(task.dueDateTime);
+  const days = Math.ceil((due - new Date()) / 86400000);
+  const label = due.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  if (statusOf(task) === 'done') return { text: `due ${label}`, cls: '' };
+  if (days < 0) return { text: `${-days}d overdue`, cls: 'overdue' };
+  if (days <= 3) return { text: `due ${label}`, cls: 'due-soon' };
+  return { text: `due ${label}`, cls: '' };
+}
+
+async function patchTask(taskId, patch) {
+  const updated = await api(`/api/tasks/${taskId}`, { method: 'PATCH', body: JSON.stringify(patch) });
+  // Graph echoes the task back; splice it in rather than refetching the board.
+  const i = state.tasks.findIndex((t) => t.id === taskId);
+  if (i >= 0 && updated) state.tasks[i] = { ...state.tasks[i], ...updated };
+  render();
+}
+
+async function patchDetails(taskId, patch) {
+  const updated = await api(`/api/tasks/${taskId}/details`, { method: 'PATCH', body: JSON.stringify(patch) });
+  state.details[taskId] = { ...state.details[taskId], ...(updated ?? patch) };
+  render();
+}
+
+function taskCard(task) {
+  const card = document.createElement('div');
+  card.className = 'card';
+  const status = statusOf(task);
+
+  const row = document.createElement('div');
+  row.className = 'row';
+  const title = document.createElement('span');
+  title.className = `title ${status === 'done' ? 'done' : ''}`;
+  title.textContent = task.title;
+  row.append(title);
+
+  const due = dueChip(task);
+  if (due) {
+    const chip = document.createElement('span');
+    chip.className = `chip ${due.cls}`;
+    chip.textContent = due.text;
+    row.append(chip);
+  }
+  if (status === 'done') {
+    const chip = document.createElement('span');
+    chip.className = 'chip done';
+    chip.textContent = 'complete';
+    row.append(chip);
+  }
+  card.append(row);
+
+  const controls = document.createElement('div');
+  controls.className = 'controls';
+
+  const group = document.createElement('span');
+  group.className = 'group';
+  for (const [label, pct, key] of [['Not started', 0, 'todo'], ['In progress', 50, 'doing'], ['Done', 100, 'done']]) {
+    const btn = document.createElement('button');
+    btn.textContent = label;
+    if (status === key) btn.classList.add('on');
+    btn.onclick = () => write(() => patchTask(task.id, { percentComplete: pct }));
+    group.append(btn);
+  }
+  controls.append(group);
+
+  const dueInput = document.createElement('input');
+  dueInput.type = 'date';
+  dueInput.value = task.dueDateTime ? task.dueDateTime.slice(0, 10) : '';
+  dueInput.onchange = () =>
+    write(() =>
+      patchTask(task.id, { dueDateTime: dueInput.value ? `${dueInput.value}T00:00:00Z` : null })
+    );
+  controls.append(dueInput);
+
+  const bucketSelect = document.createElement('select');
+  for (const bucket of state.buckets) {
+    const opt = document.createElement('option');
+    opt.value = bucket.id;
+    opt.textContent = bucket.name;
+    if (bucket.id === task.bucketId) opt.selected = true;
+    bucketSelect.append(opt);
+  }
+  bucketSelect.onchange = () => write(() => patchTask(task.id, { bucketId: bucketSelect.value }));
+  controls.append(bucketSelect);
+
+  const notesToggle = document.createElement('button');
+  notesToggle.className = 'link';
+  notesToggle.textContent = 'Notes & updates';
+  controls.append(notesToggle);
+  card.append(controls);
+
+  const notes = document.createElement('div');
+  notes.className = 'notes hidden';
+  const description = state.details[task.id]?.description ?? '';
+
+  const log = document.createElement('pre');
+  log.textContent = description || 'No notes yet.';
+  notes.append(log);
+
+  const updateRow = document.createElement('div');
+  updateRow.className = 'row';
+  const updateInput = document.createElement('input');
+  updateInput.placeholder = 'Post a status update…';
+  updateInput.style.flex = '1 1 240px';
+  const postBtn = document.createElement('button');
+  postBtn.textContent = 'Post update';
+  const post = () => {
+    const text = updateInput.value.trim();
+    if (!text) return;
+    // Newest first, dated, appended to whatever notes already exist.
+    const stamped = `[${new Date().toISOString().slice(0, 10)}] ${text}`;
+    const next = description ? `${stamped}\n${description}` : stamped;
+    updateInput.value = '';
+    write(() => patchDetails(task.id, { description: next }));
+  };
+  postBtn.onclick = post;
+  updateInput.onkeydown = (e) => { if (e.key === 'Enter') post(); };
+  updateRow.append(updateInput, postBtn);
+  notes.append(updateRow);
+
+  const editBtn = document.createElement('button');
+  editBtn.className = 'link';
+  editBtn.textContent = 'Edit notes';
+  editBtn.onclick = () => {
+    const box = document.createElement('textarea');
+    box.value = description;
+    const save = document.createElement('button');
+    save.textContent = 'Save notes';
+    save.onclick = () => write(() => patchDetails(task.id, { description: box.value }));
+    editBtn.replaceWith(box, save);
+  };
+  notes.append(editBtn);
+
+  notesToggle.onclick = () => notes.classList.toggle('hidden');
+  card.append(notes);
+
+  return card;
+}
+
+function render() {
+  const board = $('#board');
+  board.textContent = '';
+
+  if (!state.tasks.length) {
+    const empty = document.createElement('p');
+    empty.className = 'muted';
+    empty.textContent = 'No projects in this plan yet.';
+    board.append(empty);
+    return;
+  }
+
+  // Group by bucket, then unbucketed, so categories read as sections.
+  const groups = state.buckets.map((b) => [b.name, state.tasks.filter((t) => t.bucketId === b.id)]);
+  const known = new Set(state.buckets.map((b) => b.id));
+  const loose = state.tasks.filter((t) => !known.has(t.bucketId));
+  if (loose.length) groups.push(['Uncategorized', loose]);
+
+  for (const [name, tasks] of groups) {
+    if (!tasks.length) continue;
+    const heading = document.createElement('h2');
+    heading.textContent = `${name} · ${tasks.length}`;
+    board.append(heading);
+    const sorted = [...tasks].sort(
+      (a, b) => (a.dueDateTime ?? '9999').localeCompare(b.dueDateTime ?? '9999')
+    );
+    for (const task of sorted) board.append(taskCard(task));
+  }
+}
+
+async function loadBoard(planId) {
+  clearError();
+  state.planId = planId;
+  location.hash = planId;
+  const data = await api(`/api/board/${planId}?includeDetails=true`);
+  state.buckets = data.buckets;
+  state.tasks = data.tasks;
+  state.details = data.details ?? {};
+
+  const newBucket = $('#new-bucket');
+  newBucket.textContent = '';
+  for (const bucket of state.buckets) {
+    const opt = document.createElement('option');
+    opt.value = bucket.id;
+    opt.textContent = bucket.name;
+    newBucket.append(opt);
+  }
+  render();
+}
+
+async function init() {
+  try {
+    const { value: plans } = await api('/api/plans');
+    if (!plans.length) {
+      showError(new Error('No plans found for this account. Create one in Planner first.'));
+      return;
+    }
+    const select = $('#plan');
+    for (const plan of plans) {
+      const opt = document.createElement('option');
+      opt.value = plan.id;
+      opt.textContent = plan.title;
+      select.append(opt);
+    }
+    const initial = location.hash.slice(1) || plans[0].id;
+    select.value = initial;
+    select.onchange = () => write(() => loadBoard(select.value));
+    await loadBoard(initial);
+  } catch (err) {
+    showError(err);
+  }
+}
+
+$('#refresh').onclick = () => write(() => loadBoard(state.planId));
+$('#add').onclick = () =>
+  write(async () => {
+    const title = $('#new-title').value.trim();
+    if (!title) return;
+    const due = $('#new-due').value;
+    await api('/api/tasks', {
+      method: 'POST',
+      body: JSON.stringify({
+        planId: state.planId,
+        title,
+        bucketId: $('#new-bucket').value || undefined,
+        dueDateTime: due ? `${due}T00:00:00Z` : undefined,
+      }),
+    });
+    $('#new-title').value = '';
+    $('#new-due').value = '';
+    await loadBoard(state.planId);
+  });
+
+init();
+</script>
+</body>
+</html>
