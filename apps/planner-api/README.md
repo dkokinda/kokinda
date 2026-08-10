@@ -20,16 +20,20 @@ surface and is not implemented here.
 
 ## Setup
 
-1. **Register an app** — [portal.azure.com](https://portal.azure.com) →
-   Microsoft Entra ID → App registrations → New registration.
-   - Supported account types: *Accounts in any organizational directory*.
-   - Under **Authentication**, enable *Allow public client flows* (device code
-     needs it).
-2. **Add permissions** — API permissions → Microsoft Graph → Delegated:
+1. **Register an app.** Run `scripts/register-app.sh` from Azure Cloud Shell
+   (the `>_` icon in the portal) or any Azure CLI signed in as a tenant admin.
+   It creates the registration, enables public client flows, adds the three
+   delegated permissions, grants admin consent, and prints the two values you
+   need.
+
+   To do it by hand instead: [portal.azure.com](https://portal.azure.com) →
+   Microsoft Entra ID → App registrations → New registration; enable
+   *Allow public client flows* under **Authentication** (device code does not
+   work without it); then API permissions → Microsoft Graph → Delegated:
    `User.Read`, `Tasks.ReadWrite`, `Group.Read.All`.
-3. **Configure** — `cp .env.example .env`, set `GRAPH_CLIENT_ID` and
-   `GRAPH_TENANT_ID` (your tenant GUID, or `organizations`).
-4. **Sign in once**:
+2. **Configure** — `cp .env.example .env`, then paste in the `GRAPH_CLIENT_ID`
+   and `GRAPH_TENANT_ID` the script printed.
+3. **Sign in once**:
    ```bash
    npm install
    npm run login     # prints a code to enter at microsoft.com/devicelogin
