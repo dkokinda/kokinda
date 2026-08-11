@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { graphRequest } from './graph/client.js';
 import { asyncRoute, errorHandler } from './lib/errors.js';
 import { boardRouter } from './routes/board.js';
+import { diagnosticsRouter } from './routes/diagnostics.js';
 import { plansRouter } from './routes/plans.js';
 import { tasksRouter } from './routes/tasks.js';
 
@@ -26,6 +27,7 @@ export function createApp() {
   app.use('/api/plans', plansRouter());
   app.use('/api/tasks', tasksRouter());
   app.use('/api/board', boardRouter());
+  app.use('/api/diagnostics', diagnosticsRouter());
 
   // The tracker UI is served from this same origin on purpose: a page hosted
   // anywhere else cannot call this API from a browser, so its buttons would be
