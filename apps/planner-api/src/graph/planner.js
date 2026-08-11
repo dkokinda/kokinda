@@ -29,6 +29,13 @@ export function buildChecklist(items = []) {
 }
 
 export const listMyPlans = (opts) => graphRequestAll('/me/planner/plans', opts);
+
+/**
+ * Plans backed by a plannerRoster rather than a Microsoft 365 group — what new
+ * Planner labels "Shared" plans. They do not appear in /me/planner/plans at
+ * all, and the only way to enumerate them is this beta-only endpoint.
+ */
+export const listMyRosterPlans = (opts) => graphRequestAll('/me/planner/rosterPlans', { ...opts, beta: true });
 export const listGroupPlans = (groupId, opts) => graphRequestAll(`/groups/${groupId}/planner/plans`, opts);
 export const listMyTasks = (opts) => graphRequestAll('/me/planner/tasks', opts);
 

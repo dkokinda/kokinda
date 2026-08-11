@@ -83,6 +83,12 @@
     background: var(--late); color: #fff; padding: 10px 14px;
     border-radius: 8px; margin-bottom: 14px; white-space: pre-wrap;
   }
+  /* An empty account is a normal state, not a failure — it must not look like one. */
+  .notice {
+    background: var(--card); border: 1px solid var(--line); color: var(--muted);
+    padding: 14px 16px; border-radius: 11px; margin-bottom: 14px;
+  }
+  .notice a { color: var(--accent); }
   .hidden { display: none; }
 </style>
 </head>
@@ -96,8 +102,9 @@
 </header>
 
 <div id="error" class="err hidden"></div>
+<div id="notice" class="notice hidden"></div>
 
-<div class="card">
+<div class="card hidden" id="add-card">
   <div class="row">
     <input id="new-title" placeholder="New project" style="flex:1 1 260px">
     <select id="new-bucket"></select>
@@ -117,6 +124,11 @@ function showError(err) {
   $('#error').classList.remove('hidden');
 }
 function clearError() { $('#error').classList.add('hidden'); }
+
+function showNotice(html) {
+  $('#notice').innerHTML = html;
+  $('#notice').classList.remove('hidden');
+}
 
 async function api(path, options = {}) {
   const res = await fetch(path, {
@@ -341,11 +353,21 @@ async function loadBoard(planId) {
 
 async function init() {
   try {
+    clearError();
+    $('#notice').classList.add('hidden');
     const { value: plans } = await api('/api/plans');
     if (!plans.length) {
-      showError(new Error('No plans found for this account. Create one in Planner first.'));
+      // Reaching here means Graph answered fine and the account simply has no
+      // plans — a first-run state, not an error. A plan needs a Microsoft 365
+      // group behind it, which is why it has to be created in Planner itself.
+      showNotice(
+        'Connected, but this account has no Planner plans yet. ' +
+        'Create one at <a href="https://planner.cloud.microsoft" target="_blank" rel="noopener">planner.cloud.microsoft</a>' +
+        ' — its buckets become your categories here — then press Refresh.'
+      );
       return;
     }
+    $('#add-card').classList.remove('hidden');
     const select = $('#plan');
     for (const plan of plans) {
       const opt = document.createElement('option');
@@ -362,7 +384,9 @@ async function init() {
   }
 }
 
-$('#refresh').onclick = () => write(() => loadBoard(state.planId));
+// With no plan selected yet there is nothing to reload — re-run discovery
+// instead, so Refresh is the right button to press after creating a plan.
+$('#refresh').onclick = () => write(() => (state.planId ? loadBoard(state.planId) : init()));
 $('#add').onclick = () =>
   write(async () => {
     const title = $('#new-title').value.trim();

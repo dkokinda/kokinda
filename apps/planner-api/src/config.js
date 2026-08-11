@@ -14,6 +14,9 @@ export const config = {
     scopes: process.env.GRAPH_SCOPES ?? 'offline_access User.Read Tasks.ReadWrite Group.Read.All',
     tokenCachePath: process.env.GRAPH_TOKEN_CACHE_PATH ?? '.tokens.json',
     baseUrl: process.env.GRAPH_BASE_URL ?? 'https://graph.microsoft.com/v1.0',
+    // Roster-backed plans — what new Planner calls "Shared" plans — are only
+    // discoverable through /me/planner/rosterPlans, which is beta-only.
+    betaUrl: process.env.GRAPH_BETA_URL ?? 'https://graph.microsoft.com/beta',
     authorityHost: process.env.GRAPH_AUTHORITY_HOST ?? 'https://login.microsoftonline.com',
   },
 };

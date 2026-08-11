@@ -18,13 +18,13 @@ export class GraphApiError extends Error {
  * and PATCH answers 204 with no body unless `Prefer: return=representation`
  * asks for the updated resource back.
  */
-export async function graphRequest(path, { method = 'GET', body, etag, prefer, fetchImpl = fetch } = {}) {
+export async function graphRequest(path, { method = 'GET', body, etag, prefer, beta = false, fetchImpl = fetch } = {}) {
   const headers = { Authorization: `Bearer ${await getAccessToken({ fetchImpl })}` };
   if (body !== undefined) headers['Content-Type'] = 'application/json';
   if (etag) headers['If-Match'] = etag;
   if (prefer) headers.Prefer = prefer;
 
-  const res = await fetchImpl(`${config.graph.baseUrl}${path}`, {
+  const res = await fetchImpl(`${beta ? config.graph.betaUrl : config.graph.baseUrl}${path}`, {
     method,
     headers,
     body: body === undefined ? undefined : JSON.stringify(body),
@@ -41,16 +41,17 @@ export async function graphRequest(path, { method = 'GET', body, etag, prefer, f
 }
 
 /** Follows @odata.nextLink so callers get every page, not just the first. */
-export async function graphRequestAll(path, { fetchImpl = fetch } = {}) {
+export async function graphRequestAll(path, { beta = false, fetchImpl = fetch } = {}) {
+  const base = beta ? config.graph.betaUrl : config.graph.baseUrl;
   const items = [];
   let next = path;
 
   while (next) {
-    const page = await graphRequest(next, { fetchImpl });
+    const page = await graphRequest(next, { beta, fetchImpl });
     items.push(...(page?.value ?? []));
     const link = page?.['@odata.nextLink'];
     // nextLink is absolute; strip the base so graphRequest can re-prefix it.
-    next = link ? link.replace(config.graph.baseUrl, '') : null;
+    next = link ? link.replace(base, '') : null;
   }
 
   return items;

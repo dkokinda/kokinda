@@ -1,5 +1,12 @@
 import { Router } from 'express';
-import { getPlan, listBuckets, listGroupPlans, listMyPlans, listPlanTasks } from '../graph/planner.js';
+import {
+  getPlan,
+  listBuckets,
+  listGroupPlans,
+  listMyPlans,
+  listMyRosterPlans,
+  listPlanTasks,
+} from '../graph/planner.js';
 import { asyncRoute } from '../lib/errors.js';
 
 export function plansRouter() {
@@ -11,8 +18,18 @@ export function plansRouter() {
     '/',
     asyncRoute(async (req, res) => {
       const { groupId } = req.query;
-      const plans = groupId ? await listGroupPlans(groupId) : await listMyPlans();
-      res.json({ value: plans });
+      if (groupId) return res.json({ value: await listGroupPlans(groupId) });
+
+      const [group, roster] = await Promise.all([
+        listMyPlans(),
+        // Roster-backed plans are beta-only, so treat the endpoint as optional:
+        // losing them is better than losing the group-backed plans as well if
+        // beta is unavailable in this tenant.
+        listMyRosterPlans().catch(() => []),
+      ]);
+
+      const byId = new Map([...group, ...roster].map((plan) => [plan.id, plan]));
+      res.json({ value: [...byId.values()] });
     })
   );
 
