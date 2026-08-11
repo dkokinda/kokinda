@@ -88,6 +88,36 @@ describe('plan discovery across both containers', () => {
     assert.equal(res.body.value[0].id, 'g1');
   });
 
+  test('reports why roster plans are missing instead of swallowing the failure', async () => {
+    installFetch({
+      [`${V1()}/me/planner/plans`]: { body: { value: [] } },
+      [`${BETA()}/me/planner/rosterPlans`]: {
+        ok: false,
+        status: 403,
+        body: { error: { message: 'Insufficient privileges to complete the operation.' } },
+      },
+    });
+
+    const res = await request(app).get('/api/plans');
+
+    assert.equal(res.status, 200, 'a missing beta endpoint is not fatal');
+    assert.deepEqual(res.body.value, []);
+    assert.equal(res.body.warnings.length, 1);
+    assert.match(res.body.warnings[0], /Insufficient privileges/);
+  });
+
+  test('reports per-container counts so an empty result is attributable', async () => {
+    installFetch({
+      [`${V1()}/me/planner/plans`]: { body: { value: [] } },
+      [`${BETA()}/me/planner/rosterPlans`]: { body: { value: [{ id: 'r1' }] } },
+    });
+
+    const res = await request(app).get('/api/plans');
+
+    assert.deepEqual(res.body.counts, { group: 0, roster: 1 });
+    assert.deepEqual(res.body.warnings, []);
+  });
+
   test('propagates a failure of the group endpoint rather than silently emptying', async () => {
     installFetch({
       [`${V1()}/me/planner/plans`]: { ok: false, status: 403, body: { error: { message: 'Insufficient privileges' } } },
