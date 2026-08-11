@@ -49,12 +49,22 @@ az ad sp create --id "$APP_ID" >/dev/null
 # user-consentable. Granting all three here keeps the first login promptless.
 az ad app permission admin-consent --id "$APP_ID"
 
+# `az account show` reads the ARM subscription context, which a Microsoft
+# 365 tenant with no Azure subscription does not have. Fall back to asking
+# Graph for the tenant directly — app registration never needed ARM anyway.
+TENANT_ID=$(az account show --query tenantId -o tsv 2>/dev/null || true)
+if [ -z "$TENANT_ID" ]; then
+  TENANT_ID=$(az rest --method get \
+    --url https://graph.microsoft.com/v1.0/organization \
+    --query 'value[0].id' -o tsv)
+fi
+
 cat <<EOF
 
 App registration created. Put these in apps/planner-api/.env:
 
 GRAPH_CLIENT_ID=$APP_ID
-GRAPH_TENANT_ID=$(az account show --query tenantId -o tsv)
+GRAPH_TENANT_ID=$TENANT_ID
 
 Then: npm install && npm run login && npm start
 EOF
