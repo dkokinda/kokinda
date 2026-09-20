@@ -10,8 +10,9 @@ installed, tested, and run on its own.
 | --- | --- | --- | --- |
 | `apps/imessage-bot` | CommonJS (`require`) | >=18 | Replies to incoming iMessages with per-chat responses from Claude, via a BlueBubbles server. |
 | `apps/indesign-pipeline` | ESM (`"type": "module"`) | >=20 | Wraps Adobe's InDesign API (Firefly Services) for template generation, PDF-to-INDD conversion, and data merge/render. |
+| `apps/planner-api` | ESM (`"type": "module"`) | >=20 | REST service over Microsoft Planner (Graph), with ETag-safe task updates, a device-code login, and a tracker UI it serves itself. |
 
-The two apps do not import from each other. Match the module system of
+The apps do not import from each other. Match the module system of
 whichever app you are editing — mixing `require` and `import` within an app
 will break it.
 
@@ -31,7 +32,8 @@ file: `node --test test/<name>.test.js`. There is no linter or formatter
 configured; `node --check <file>` is the only static check available.
 
 In Claude Code on the web, `.claude/hooks/session-start.sh` has already run
-`npm install` in both apps, so tests are ready without setup.
+`npm install` in every app, so tests are ready without setup. It loops over
+`apps/*/`, so a new app needs no change there.
 
 CI (`.github/workflows/ci.yml`) runs `npm ci && npm test` for each app on
 every pull request and push to `main`, on Node 20 and 22. The app list is a
@@ -40,12 +42,13 @@ matrix too.
 
 ## Configuration
 
-Both apps read all environment variables in exactly one module — every
+Every app reads all environment variables in exactly one module — every
 `process.env` access lives there, and the rest of the code takes values as
 constructor arguments or imports the config object:
 
 - `apps/imessage-bot/src/config.js`
 - `apps/indesign-pipeline/src/config.js`
+- `apps/planner-api/src/config.js`
 
 Adding a setting means touching three files in that app: `src/config.js`,
 `.env.example` (with a comment explaining the value), and the README. Do
