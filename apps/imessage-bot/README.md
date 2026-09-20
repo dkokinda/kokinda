@@ -11,6 +11,14 @@ A Node.js/Express service that responds to incoming iMessages with unique, conte
 3. `npm install`
 4. `npm start`
 
+### Configuration
+
+Every environment variable is read in one place — `src/config.js` — which
+applies the defaults and loads `.env`. The rest of the code takes its
+settings from that module or from constructor arguments, so adding a new
+setting means editing `src/config.js` and `.env.example`. See
+`.env.example` for the full list of supported variables.
+
 ### Restricting who it replies to
 
 By default the bot replies to every incoming message. To limit it to specific people, set `ALLOWED_CONTACTS` in `.env` to a comma-separated list of phone numbers (E.164 format, e.g. `+15555550123`) and/or email addresses — whatever form BlueBubbles reports for that contact's iMessage handle:
