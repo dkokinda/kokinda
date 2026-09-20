@@ -42,7 +42,7 @@ function loadConfig(env = process.env) {
       sendMethod: readString(env.BLUEBUBBLES_SEND_METHOD, 'apple-script'),
     },
     anthropic: {
-      model: readString(env.ANTHROPIC_MODEL, 'claude-opus-4-8'),
+      model: readString(env.ANTHROPIC_MODEL, 'claude-opus-5'),
     },
     conversation: {
       maxHistoryMessages: readNumber(env.MAX_HISTORY_MESSAGES, 30),

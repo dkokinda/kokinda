@@ -13,7 +13,7 @@ test('falls back to defaults when nothing is set', () => {
   assert.equal(config.bluebubbles.serverUrl, '');
   assert.equal(config.bluebubbles.password, '');
   assert.equal(config.bluebubbles.sendMethod, 'apple-script');
-  assert.equal(config.anthropic.model, 'claude-opus-4-8');
+  assert.equal(config.anthropic.model, 'claude-opus-5');
   assert.equal(config.conversation.maxHistoryMessages, 30);
 });
 
@@ -50,7 +50,7 @@ test('treats blank values as unset rather than overriding defaults', () => {
 
   assert.equal(config.port, 3000);
   assert.equal(config.bluebubbles.sendMethod, 'apple-script');
-  assert.equal(config.anthropic.model, 'claude-opus-4-8');
+  assert.equal(config.anthropic.model, 'claude-opus-5');
   assert.equal(config.conversation.maxHistoryMessages, 30);
   assert.deepEqual(config.allowedContacts, []);
 });
