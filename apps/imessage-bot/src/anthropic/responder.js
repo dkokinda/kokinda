@@ -5,7 +5,15 @@ const Anthropic = require('@anthropic-ai/sdk');
 const { config } = require('../config');
 
 const DEFAULT_MODEL = config.anthropic.model;
-const MAX_REPLY_TOKENS = 1024;
+
+// Hard cap on thinking *plus* reply text. Claude Opus 5 thinks by default,
+// so this has to leave room for that on top of a one-line text message.
+const MAX_REPLY_TOKENS = 4096;
+
+// A short casual reply doesn't need deep reasoning; low effort keeps
+// latency and cost down without turning thinking off (which degrades
+// output quality on Opus 5).
+const REPLY_EFFORT = 'low';
 
 const SYSTEM_PROMPT = `You are ghostwriting iMessage replies on behalf of the phone's owner. Each chat is a separate relationship with its own history — read the conversation you're given and reply the way the owner would naturally text back in this specific chat, not with a generic canned response.
 
@@ -31,9 +39,18 @@ class ClaudeResponder {
     const response = await this.client.messages.create({
       model: this.model,
       max_tokens: MAX_REPLY_TOKENS,
+      output_config: { effort: REPLY_EFFORT },
       system: SYSTEM_PROMPT,
       messages,
     });
+
+    // Safety classifiers can decline a request with a normal 200 response.
+    // Returning '' means the webhook handler sends nothing for this message.
+    if (response.stop_reason === 'refusal') {
+      const category = response.stop_details ? response.stop_details.category : null;
+      console.warn(`Claude declined to generate a reply (category: ${category || 'unknown'})`);
+      return '';
+    }
 
     const textBlock = response.content.find((block) => block.type === 'text');
     return textBlock ? textBlock.text.trim() : '';
