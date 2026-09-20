@@ -1,30 +1,22 @@
 'use strict';
 
-require('dotenv').config();
-
 const express = require('express');
+const { config } = require('./config');
 const { ConversationStore } = require('./store/conversationStore');
 const { BlueBubblesClient } = require('./bluebubbles/client');
 const { ClaudeResponder } = require('./anthropic/responder');
 const { BlueBubblesWebhookHandler } = require('./webhook/handler');
-const { parseAllowedContacts } = require('./webhook/allowlist');
 
 function createApp({ store, bluebubbles, responder, webhookToken, allowedContacts } = {}) {
   const app = express();
   app.use(express.json());
 
   const resolvedStore = store || new ConversationStore();
-  const resolvedBluebubbles =
-    bluebubbles ||
-    new BlueBubblesClient({
-      serverUrl: process.env.BLUEBUBBLES_SERVER_URL,
-      password: process.env.BLUEBUBBLES_PASSWORD,
-      sendMethod: process.env.BLUEBUBBLES_SEND_METHOD,
-    });
+  const resolvedBluebubbles = bluebubbles || new BlueBubblesClient(config.bluebubbles);
   const resolvedResponder = responder || new ClaudeResponder();
-  const resolvedToken = webhookToken !== undefined ? webhookToken : process.env.WEBHOOK_TOKEN;
+  const resolvedToken = webhookToken !== undefined ? webhookToken : config.webhookToken;
   const resolvedAllowedContacts =
-    allowedContacts !== undefined ? allowedContacts : parseAllowedContacts(process.env.ALLOWED_CONTACTS);
+    allowedContacts !== undefined ? allowedContacts : config.allowedContacts;
 
   const handler = new BlueBubblesWebhookHandler({
     store: resolvedStore,
@@ -56,7 +48,7 @@ function createApp({ store, bluebubbles, responder, webhookToken, allowedContact
 }
 
 if (require.main === module) {
-  const port = process.env.PORT || 3000;
+  const { port } = config;
   try {
     const app = createApp();
     app.listen(port, () => {

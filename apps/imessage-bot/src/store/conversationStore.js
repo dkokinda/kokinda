@@ -1,6 +1,8 @@
 'use strict';
 
-const DEFAULT_MAX_HISTORY_MESSAGES = Number(process.env.MAX_HISTORY_MESSAGES) || 30;
+const { config } = require('../config');
+
+const DEFAULT_MAX_HISTORY_MESSAGES = config.conversation.maxHistoryMessages;
 
 /**
  * In-memory, per-chat message history so each iMessage conversation gets

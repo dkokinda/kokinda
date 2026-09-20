@@ -2,7 +2,9 @@
 
 const Anthropic = require('@anthropic-ai/sdk');
 
-const DEFAULT_MODEL = process.env.ANTHROPIC_MODEL || 'claude-opus-4-8';
+const { config } = require('../config');
+
+const DEFAULT_MODEL = config.anthropic.model;
 const MAX_REPLY_TOKENS = 1024;
 
 const SYSTEM_PROMPT = `You are ghostwriting iMessage replies on behalf of the phone's owner. Each chat is a separate relationship with its own history — read the conversation you're given and reply the way the owner would naturally text back in this specific chat, not with a generic canned response.
