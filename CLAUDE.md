@@ -33,6 +33,11 @@ configured; `node --check <file>` is the only static check available.
 In Claude Code on the web, `.claude/hooks/session-start.sh` has already run
 `npm install` in both apps, so tests are ready without setup.
 
+CI (`.github/workflows/ci.yml`) runs `npm ci && npm test` for each app on
+every pull request and push to `main`, on Node 20 and 22. The app list is a
+hardcoded matrix there — when adding an app under `apps/`, add it to the
+matrix too.
+
 ## Configuration
 
 Both apps read all environment variables in exactly one module — every
