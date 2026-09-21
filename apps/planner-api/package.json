@@ -1,0 +1,27 @@
+{
+  "name": "planner-api",
+  "version": "1.0.0",
+  "description": "Custom REST API over Microsoft Planner (Graph), with ETag-safe task updates and a device-code login for unattended use.",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "login": "node src/scripts/login.js",
+    "test": "node --test"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "engines": {
+    "node": ">=20"
+  },
+  "type": "module",
+  "dependencies": {
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "supertest": "^7.2.2"
+  }
+}
