@@ -20,7 +20,7 @@ paths — so templates and CSVs need to be uploaded/hosted somewhere reachable f
 
 ## Why the schemas in this repo are JSON, not CSV
 
-The canonical data (`schemas/*.schema.json`, `data/examples/*.example.json`) is kept as
+The canonical data (`schemas/*.schema.json`, `examples/*.example.json`) is kept as
 structured JSON because that's the natural shape of the source data (nested sections,
 line items, packages) and the eventual real data source (JSON/API from a PMS or CMS).
 
@@ -42,7 +42,7 @@ seeing a real template's frame names would just mean rewriting it once we do.
 
 1. An INDD template (or IDML export of one) for at least one collateral type, uploaded
    into the session or hosted at a reachable HTTPS URL.
-2. Real or representative data for that collateral type (the `data/examples/` files
+2. Real or representative data for that collateral type (the `examples/` files
    stand in for now).
 3. Run steps 1-4 above; commit the flatten script for that collateral type once the
    frame mapping is known.
@@ -50,7 +50,7 @@ seeing a real template's frame names would just mean rewriting it once we do.
 ## Status
 
 - [x] JSON schemas for all four collateral types (`schemas/`)
-- [x] Example/placeholder data (`data/examples/`)
+- [x] Example/placeholder data (`examples/`)
 - [ ] Template uploaded and frame-mapped
 - [ ] Flatten-to-CSV script(s)
 - [ ] End-to-end merge run (PDF + INDD output)
