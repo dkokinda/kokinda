@@ -81,4 +81,12 @@ describe('cli', () => {
     assert.equal((await cli('frobnicate')).code, 2);
     assert.equal((await cli('plan', '--nope')).code, 2);
   });
+
+  test('--expect without a planId is a usage error, not a skipped check', async () => {
+    const trailing = await cli('apply', specPath, '--expect');
+    assert.equal(trailing.code, 2);
+    assert.match(trailing.err, /--expect needs a planId/);
+    assert.equal((await cli('apply', '--expect', '--json', specPath)).code, 2);
+    await assert.rejects(access(path.join(dir, 'out.csv')));
+  });
 });

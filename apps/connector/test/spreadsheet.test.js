@@ -72,6 +72,16 @@ describe('spreadsheet connector: CSV', () => {
     await readFile(path.join(dir, 'nested/deeper/out.csv'), 'utf8');
   });
 
+  test('a new CSV target with headerRow > 1 puts the header on that row and converges', async () => {
+    await writeFile(path.join(dir, 'in.csv'), 'ID,Name,Joined,Active\n1,Al,2026-01-01,yes\n');
+    const s = spec({ path: 'in.csv' }, { path: 'out.csv', headerRow: 3 });
+    await apply({ spec: s, ...connectors(s) });
+    assert.equal(await readFile(path.join(dir, 'out.csv'), 'utf8'), '\n\nid,name,joined,active\n1,Al,2026-01-01,true\n');
+    const again = await plan({ spec: s, ...connectors(s) });
+    assert.deepEqual(again.errors, []);
+    assert.deepEqual(again.summary, { create: 0, update: 0, delete: 0, unchanged: 1 });
+  });
+
   test('keeps lines above a header row that is not row 1', async () => {
     await writeFile(path.join(dir, 'in.csv'), 'ID,Name,Joined,Active\n1,Al,2026-01-01,yes\n');
     await writeFile(path.join(dir, 'out.csv'), 'Exported by finance\nid,name,joined,active\n');

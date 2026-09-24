@@ -15,7 +15,11 @@ function parseArgs(argv) {
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--json') args.json = true;
-    else if (a === '--expect') args.expect = argv[++i];
+    else if (a === '--expect') {
+      // A missing value must not silently disable the check it asks for.
+      args.expect = argv[++i];
+      if (!args.expect || args.expect.startsWith('-')) throw new Error('--expect needs a planId');
+    }
     else if (a === '-h' || a === '--help') args.help = true;
     else if (a.startsWith('-')) throw new Error(`unknown option ${a}`);
     else args.positional.push(a);

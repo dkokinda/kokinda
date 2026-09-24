@@ -131,9 +131,12 @@ export function createSpreadsheetConnector(endpoint, { baseDir = process.cwd() }
     // `types` maps column -> field type, so dates land as real Excel dates.
     async write({ columns, rows, types = {} }) {
       if (format === 'csv') {
-        const above = headerRow > 1 && (await exists(file))
+        const above = (await exists(file))
           ? parseCsv(await readFile(file, 'utf8'), { delimiter }).slice(0, headerRow - 1)
           : [];
+        // Pad with blank lines so the header lands on headerRow even in a new
+        // or short file; otherwise the next read would take data as headers.
+        while (above.length < headerRow - 1) above.push([]);
         const body = [columns, ...rows.map((r) => columns.map((c) => r[c]))];
         const text = formatCsv([...above, ...body], { delimiter });
         await atomically(file, (tmp) => writeFile(tmp, text, 'utf8'));
