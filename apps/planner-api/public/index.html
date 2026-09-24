@@ -98,6 +98,8 @@
   <h1>Project tracker</h1>
   <select id="plan"></select>
   <button id="refresh">Refresh</button>
+  <input id="plan-id" placeholder="or paste a plan ID" size="24">
+  <button id="open-id">Open</button>
   <span id="saving" class="muted hidden">saving…</span>
 </header>
 
@@ -340,6 +342,17 @@ async function loadBoard(planId) {
   state.tasks = data.tasks;
   state.details = data.details ?? {};
 
+  // A plan opened by id is not in the dropdown, which leaves nothing on screen
+  // naming the board. The board response carries the title, so use it.
+  const select = $('#plan');
+  if (![...select.options].some((option) => option.value === planId)) {
+    const opt = document.createElement('option');
+    opt.value = planId;
+    opt.textContent = data.plan?.title ?? planId;
+    select.append(opt);
+  }
+  select.value = planId;
+
   const newBucket = $('#new-bucket');
   newBucket.textContent = '';
   for (const bucket of state.buckets) {
@@ -362,18 +375,27 @@ async function init() {
       if (discovery.warnings?.length) {
         showError(new Error(discovery.warnings.join('\n')));
       }
-      // Reaching here means Graph answered fine and the account simply has no
-      // plans — a first-run state, not an error. A plan needs a Microsoft 365
-      // group behind it, which is why it has to be created in Planner itself.
+      // Listing nothing does not mean the plan is unreachable: fetching one by
+      // id works whatever container Graph files it under. Honour an id in the
+      // URL so that route survives a reload.
+      const fromHash = location.hash.slice(1);
+      if (fromHash) {
+        $('#add-card').classList.remove('hidden');
+        await loadBoard(fromHash);
+        return;
+      }
       showNotice(
-        'Connected, but this account has no Planner plans yet. ' +
-        'Create one at <a href="https://planner.cloud.microsoft" target="_blank" rel="noopener">planner.cloud.microsoft</a>' +
+        'Connected, but no plans were listed for this account. ' +
+        'If you have a plan that is not showing, paste its ID in the box above — it is the ' +
+        'segment after <code>/plan/</code> in the Planner URL. ' +
+        'Otherwise create one at <a href="https://planner.cloud.microsoft" target="_blank" rel="noopener">planner.cloud.microsoft</a>' +
         ' — its buckets become your categories here — then press Refresh.'
       );
       return;
     }
     $('#add-card').classList.remove('hidden');
     const select = $('#plan');
+    select.textContent = '';
     for (const plan of plans) {
       const opt = document.createElement('option');
       opt.value = plan.id;
@@ -392,6 +414,14 @@ async function init() {
 // With no plan selected yet there is nothing to reload — re-run discovery
 // instead, so Refresh is the right button to press after creating a plan.
 $('#refresh').onclick = () => write(() => (state.planId ? loadBoard(state.planId) : init()));
+$('#open-id').onclick = () =>
+  write(async () => {
+    const id = $('#plan-id').value.trim();
+    if (!id) return;
+    $('#notice').classList.add('hidden');
+    $('#add-card').classList.remove('hidden');
+    await loadBoard(id);
+  });
 $('#add').onclick = () =>
   write(async () => {
     const title = $('#new-title').value.trim();

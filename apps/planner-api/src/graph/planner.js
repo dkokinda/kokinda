@@ -36,6 +36,18 @@ export const listMyPlans = (opts) => graphRequestAll('/me/planner/plans', opts);
  * all, and the only way to enumerate them is this beta-only endpoint.
  */
 export const listMyRosterPlans = (opts) => graphRequestAll('/me/planner/rosterPlans', { ...opts, beta: true });
+
+/**
+ * Plans the user has favourited or opened recently, read off the plannerUser
+ * object. This is not a container of its own — it is a set of references that
+ * can name a plan the per-container listings miss, which makes it a useful
+ * last resort for a plan that is plainly visible in Planner but absent from
+ * both /me/planner/plans and /me/planner/rosterPlans.
+ */
+export async function listMyReferencedPlans(opts) {
+  const user = await graphRequest('/me/planner?$expand=favoritePlans,recentPlans', { ...opts, beta: true });
+  return [...(user?.favoritePlans ?? []), ...(user?.recentPlans ?? [])];
+}
 export const listGroupPlans = (groupId, opts) => graphRequestAll(`/groups/${groupId}/planner/plans`, opts);
 export const listMyTasks = (opts) => graphRequestAll('/me/planner/tasks', opts);
 
