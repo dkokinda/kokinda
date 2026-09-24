@@ -80,6 +80,36 @@ Field mapping, since Planner's own vocabulary differs:
 Status updates are prepended to the notes with an ISO date, newest first, so a
 project carries its own history rather than only its current state.
 
+## When a plan doesn't appear
+
+Planner shows plans from more than one backing store in a single list, and they
+are not all reachable the same way. `GET /api/plans` therefore queries three
+sources and merges them, de-duplicating by id:
+
+| Source | Endpoint | Version |
+| --- | --- | --- |
+| Group-backed plans | `/me/planner/plans` | v1.0 |
+| Roster-backed plans (new Planner "Shared") | `/me/planner/rosterPlans` | beta |
+| Favourites and recents | `/me/planner?$expand=favoritePlans,recentPlans` | beta |
+
+The last two are optional: if beta is unavailable the group-backed plans are
+still returned, and the reason appears in the response's `warnings` and in the
+server log. A failure of the *group* endpoint propagates, so a `403` is never
+mistaken for "no plans". `counts` reports each source separately, so an empty
+result is attributable rather than mysterious.
+
+**Discovery is not the only route.** Fetching a plan by id works whatever
+container it belongs to, so the tracker takes a plan ID in the header — the
+segment after `/plan/` in the Planner URL. It is written to the page's URL
+hash, so the board survives a reload. Use this if a plan is visible in Planner
+but missing from the dropdown.
+
+`GET /api/diagnostics/plan-sources` probes each container independently and
+reports what each returns, for working out which one a plan is in. If a plan
+appears in none of them, it is likely a **Planner Premium** plan (Dataverse
+backed) — those are not exposed through the Graph Planner API at any version,
+and the fix is to use a basic Planner plan rather than to change this service.
+
 ## Endpoints
 
 | Method | Path | Notes |
@@ -88,6 +118,7 @@ project carries its own history rather than only its current state.
 | `GET` | `/me` | Confirms which identity the token carries |
 | `GET` | `/api/board/:planId` | Plan + buckets + tasks in one call; `?includeDetails=true` adds notes |
 | `GET` | `/api/plans` | Signed-in user's plans; `?groupId=` scopes to a group |
+| `GET` | `/api/diagnostics/plan-sources` | Read-only sweep of every container a plan could live in |
 | `GET` | `/api/plans/:planId` | |
 | `GET` | `/api/plans/:planId/buckets` | |
 | `GET` | `/api/plans/:planId/tasks` | |

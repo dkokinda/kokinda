@@ -25,6 +25,7 @@ function installFetch(routes) {
 
 const V1 = () => config.graph.baseUrl;
 const BETA = () => config.graph.betaUrl;
+const REFERENCED = () => `${config.graph.betaUrl}/me/planner?$expand=favoritePlans,recentPlans`;
 
 describe('plan discovery across both containers', () => {
   let app;
@@ -45,6 +46,7 @@ describe('plan discovery across both containers', () => {
     installFetch({
       [`${V1()}/me/planner/plans`]: { body: { value: [] } },
       [`${BETA()}/me/planner/rosterPlans`]: { body: { value: [{ id: 'r1', title: 'RCGC Marketing — Derek' }] } },
+      [REFERENCED()]: { body: { favoritePlans: [], recentPlans: [] } },
     });
 
     const res = await request(app).get('/api/plans');
@@ -58,6 +60,7 @@ describe('plan discovery across both containers', () => {
     const calls = installFetch({
       [`${V1()}/me/planner/plans`]: { body: { value: [] } },
       [`${BETA()}/me/planner/rosterPlans`]: { body: { value: [] } },
+      [REFERENCED()]: { body: { favoritePlans: [], recentPlans: [] } },
     });
 
     await request(app).get('/api/plans');
@@ -69,6 +72,7 @@ describe('plan discovery across both containers', () => {
     installFetch({
       [`${V1()}/me/planner/plans`]: { body: { value: [{ id: 'g1', title: 'Group plan' }, { id: 'dup', title: 'Both' }] } },
       [`${BETA()}/me/planner/rosterPlans`]: { body: { value: [{ id: 'dup', title: 'Both' }, { id: 'r1', title: 'Roster plan' }] } },
+      [REFERENCED()]: { body: { favoritePlans: [], recentPlans: [] } },
     });
 
     const res = await request(app).get('/api/plans');
@@ -80,6 +84,7 @@ describe('plan discovery across both containers', () => {
     installFetch({
       [`${V1()}/me/planner/plans`]: { body: { value: [{ id: 'g1', title: 'Group plan' }] } },
       [`${BETA()}/me/planner/rosterPlans`]: { ok: false, status: 404, body: { error: { message: 'not found' } } },
+      [REFERENCED()]: { body: { favoritePlans: [], recentPlans: [] } },
     });
 
     const res = await request(app).get('/api/plans');
@@ -96,6 +101,7 @@ describe('plan discovery across both containers', () => {
         status: 403,
         body: { error: { message: 'Insufficient privileges to complete the operation.' } },
       },
+      [REFERENCED()]: { body: { favoritePlans: [], recentPlans: [] } },
     });
 
     const res = await request(app).get('/api/plans');
@@ -110,11 +116,12 @@ describe('plan discovery across both containers', () => {
     installFetch({
       [`${V1()}/me/planner/plans`]: { body: { value: [] } },
       [`${BETA()}/me/planner/rosterPlans`]: { body: { value: [{ id: 'r1' }] } },
+      [REFERENCED()]: { body: { favoritePlans: [], recentPlans: [] } },
     });
 
     const res = await request(app).get('/api/plans');
 
-    assert.deepEqual(res.body.counts, { group: 0, roster: 1 });
+    assert.deepEqual(res.body.counts, { group: 0, roster: 1, referenced: 0 });
     assert.deepEqual(res.body.warnings, []);
   });
 
@@ -139,5 +146,60 @@ describe('plan discovery across both containers', () => {
 
     assert.equal(res.body.value[0].id, 'p2');
     assert.equal(calls.some((c) => c.includes('rosterPlans')), false);
+  });
+});
+
+describe('favourite/recent plans as a last-resort source', () => {
+  let app;
+
+  beforeEach(() => {
+    resetTokenCache();
+    config.graph.clientId = 'test-client-id';
+    config.graph.authMode = 'device_code';
+    setRefreshToken('rt');
+    app = createApp();
+  });
+
+  afterEach(() => {
+    globalThis.fetch = ORIGINAL_FETCH;
+  });
+
+  test('surfaces a plan that neither container lists', async () => {
+    installFetch({
+      [`${V1()}/me/planner/plans`]: { body: { value: [] } },
+      [`${BETA()}/me/planner/rosterPlans`]: { body: { value: [] } },
+      [REFERENCED()]: { body: { favoritePlans: [], recentPlans: [{ id: 'x1', title: 'RCGC Marketing — Derek' }] } },
+    });
+
+    const res = await request(app).get('/api/plans');
+
+    assert.deepEqual(res.body.value.map((p) => p.title), ['RCGC Marketing — Derek']);
+    assert.deepEqual(res.body.counts, { group: 0, roster: 0, referenced: 1 });
+  });
+
+  test('does not double-count a plan that is also listed by a container', async () => {
+    installFetch({
+      [`${V1()}/me/planner/plans`]: { body: { value: [{ id: 'g1', title: 'Shared' }] } },
+      [`${BETA()}/me/planner/rosterPlans`]: { body: { value: [] } },
+      [REFERENCED()]: { body: { favoritePlans: [{ id: 'g1', title: 'Shared' }], recentPlans: [] } },
+    });
+
+    const res = await request(app).get('/api/plans');
+
+    assert.equal(res.body.value.length, 1);
+  });
+
+  test('a failing favourites lookup is reported, not fatal', async () => {
+    installFetch({
+      [`${V1()}/me/planner/plans`]: { body: { value: [{ id: 'g1', title: 'Kept' }] } },
+      [`${BETA()}/me/planner/rosterPlans`]: { body: { value: [] } },
+      [REFERENCED()]: { ok: false, status: 400, body: { error: { message: 'beta unavailable' } } },
+    });
+
+    const res = await request(app).get('/api/plans');
+
+    assert.equal(res.status, 200);
+    assert.deepEqual(res.body.value.map((p) => p.id), ['g1']);
+    assert.match(res.body.warnings.join(' '), /beta unavailable/);
   });
 });

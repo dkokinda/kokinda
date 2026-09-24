@@ -4,6 +4,7 @@ import {
   listBuckets,
   listGroupPlans,
   listMyPlans,
+  listMyReferencedPlans,
   listMyRosterPlans,
   listPlanTasks,
 } from '../graph/planner.js';
@@ -21,24 +22,31 @@ export function plansRouter() {
       if (groupId) return res.json({ value: await listGroupPlans(groupId) });
 
       const warnings = [];
-      const [group, roster] = await Promise.all([
+
+      /** A discovery source that must never take the others down with it. */
+      const optional = (label, promise) =>
+        promise.catch((err) => {
+          console.warn(`[plans] ${label} lookup failed: ${err.message}`);
+          warnings.push(`${label} could not be listed — ${err.message}`);
+          return [];
+        });
+
+      const [group, roster, referenced] = await Promise.all([
         listMyPlans(),
         // Roster-backed plans are beta-only, so treat the endpoint as optional:
         // losing them is better than losing the group-backed plans as well if
         // beta is unavailable in this tenant. Report the reason though — a
         // swallowed failure here is indistinguishable from having no shared
         // plans, which sends you looking in entirely the wrong place.
-        listMyRosterPlans().catch((err) => {
-          console.warn(`[plans] rosterPlans lookup failed: ${err.message}`);
-          warnings.push(`Shared (roster-backed) plans could not be listed — ${err.message}`);
-          return [];
-        }),
+        optional('Shared (roster-backed) plans', listMyRosterPlans()),
+        // Favourites and recents can name a plan neither container lists.
+        optional('Favourite/recent plans', listMyReferencedPlans()),
       ]);
 
-      const byId = new Map([...group, ...roster].map((plan) => [plan.id, plan]));
+      const byId = new Map([...group, ...roster, ...referenced].map((plan) => [plan.id, plan]));
       res.json({
         value: [...byId.values()],
-        counts: { group: group.length, roster: roster.length },
+        counts: { group: group.length, roster: roster.length, referenced: referenced.length },
         warnings,
       });
     })
