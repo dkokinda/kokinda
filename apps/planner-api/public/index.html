@@ -239,6 +239,17 @@ function taskCard(task) {
   controls.append(dueInput);
 
   const bucketSelect = document.createElement('select');
+  // A task can sit in a bucket this plan's listing doesn't include (or in none
+  // at all). Without a placeholder the browser shows the first bucket as
+  // selected, so the card would claim a category the task isn't in — and
+  // contradict the "Uncategorized" section it was just rendered under.
+  if (!state.buckets.some((bucket) => bucket.id === task.bucketId)) {
+    const opt = document.createElement('option');
+    opt.value = '';
+    opt.textContent = 'Uncategorized';
+    opt.selected = true;
+    bucketSelect.append(opt);
+  }
   for (const bucket of state.buckets) {
     const opt = document.createElement('option');
     opt.value = bucket.id;
@@ -246,7 +257,11 @@ function taskCard(task) {
     if (bucket.id === task.bucketId) opt.selected = true;
     bucketSelect.append(opt);
   }
-  bucketSelect.onchange = () => write(() => patchTask(task.id, { bucketId: bucketSelect.value }));
+  bucketSelect.onchange = () => {
+    // The placeholder is a label, not a destination.
+    if (!bucketSelect.value) return;
+    write(() => patchTask(task.id, { bucketId: bucketSelect.value }));
+  };
   controls.append(bucketSelect);
 
   const notesToggle = document.createElement('button');

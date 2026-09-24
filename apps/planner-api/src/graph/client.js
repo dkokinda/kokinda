@@ -24,7 +24,13 @@ export async function graphRequest(path, { method = 'GET', body, etag, prefer, b
   if (etag) headers['If-Match'] = etag;
   if (prefer) headers.Prefer = prefer;
 
-  const res = await fetchImpl(`${beta ? config.graph.betaUrl : config.graph.baseUrl}${path}`, {
+  // `path` is normally relative, but a paging link arrives absolute — pass
+  // those through untouched rather than prefixing a base onto a full URL.
+  const url = /^https?:\/\//i.test(path)
+    ? path
+    : `${beta ? config.graph.betaUrl : config.graph.baseUrl}${path}`;
+
+  const res = await fetchImpl(url, {
     method,
     headers,
     body: body === undefined ? undefined : JSON.stringify(body),
@@ -42,16 +48,19 @@ export async function graphRequest(path, { method = 'GET', body, etag, prefer, b
 
 /** Follows @odata.nextLink so callers get every page, not just the first. */
 export async function graphRequestAll(path, { beta = false, fetchImpl = fetch } = {}) {
-  const base = beta ? config.graph.betaUrl : config.graph.baseUrl;
   const items = [];
   let next = path;
 
   while (next) {
     const page = await graphRequest(next, { beta, fetchImpl });
     items.push(...(page?.value ?? []));
-    const link = page?.['@odata.nextLink'];
-    // nextLink is absolute; strip the base so graphRequest can re-prefix it.
-    next = link ? link.replace(base, '') : null;
+    // Hand the paging link on as-is. It was previously rewritten with
+    // `replace(base, '')`, which silently did nothing when the link did not
+    // start with the configured base — producing a doubled-up URL — and would
+    // have mangled a link that merely contained the base inside a query
+    // parameter. graphRequest accepts an absolute URL, so no rewriting is
+    // needed at all.
+    next = page?.['@odata.nextLink'] ?? null;
   }
 
   return items;
