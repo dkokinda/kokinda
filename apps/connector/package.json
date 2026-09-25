@@ -1,0 +1,27 @@
+{
+  "name": "connector",
+  "version": "1.0.0",
+  "description": "Deterministic, spec-driven sync between systems: plan the exact changes, review them, apply them. Ships a spreadsheet (CSV/XLSX) connector.",
+  "main": "src/cli.js",
+  "scripts": {
+    "start": "node src/cli.js",
+    "plan": "node src/cli.js plan",
+    "apply": "node src/cli.js apply",
+    "test": "node --test"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "dotenv": "^18.0.3",
+    "exceljs": "^4.4.0",
+    "zod": "^4.6.5"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "overrides": {
+    "uuid": "^11.1.1"
+  }
+}

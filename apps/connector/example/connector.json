@@ -1,0 +1,14 @@
+{
+  "source": { "type": "spreadsheet", "path": "customers.csv" },
+  "target": { "type": "spreadsheet", "path": "out/customers.xlsx", "sheet": "Customers" },
+  "key": ["email"],
+  "fields": {
+    "email": { "from": "Customer Email", "transform": ["trim", "lower"] },
+    "name": { "from": "Full Name", "transform": ["collapseWhitespace"] },
+    "plan": { "from": "Plan", "enum": ["free", "pro", "team"] },
+    "seats": { "from": "Seats", "type": "integer", "transform": ["stripCommas"] },
+    "signedUp": { "from": "Signed Up", "type": "date", "format": "M/D/YYYY" },
+    "active": { "from": "Active", "type": "boolean", "default": false }
+  },
+  "onMissing": "keep"
+}

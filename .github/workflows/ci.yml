@@ -13,8 +13,8 @@ jobs:
       fail-fast: false
       matrix:
         # Each app under apps/ is independent; add new apps here.
-        app: [imessage-bot, indesign-pipeline, planner-api]
-        # 20 is the floor both apps' `engines` allow; 22 is current LTS.
+        app: [connector, imessage-bot, indesign-pipeline, planner-api]
+        # 20 is the floor every app' `engines` allow; 22 is current LTS.
         node: [20, 22]
     defaults:
       run:

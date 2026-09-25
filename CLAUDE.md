@@ -8,6 +8,7 @@ installed, tested, and run on its own.
 
 | App | Module system | Node | What it does |
 | --- | --- | --- | --- |
+| `apps/connector` | ESM (`"type": "module"`) | >=20 | Deterministic, spec-driven sync between systems (plan, then apply); ships a CSV/XLSX spreadsheet connector. |
 | `apps/imessage-bot` | CommonJS (`require`) | >=18 | Replies to incoming iMessages with per-chat responses from Claude, via a BlueBubbles server. |
 | `apps/indesign-pipeline` | ESM (`"type": "module"`) | >=20 | Wraps Adobe's InDesign API (Firefly Services) for template generation, PDF-to-INDD conversion, and data merge/render. |
 | `apps/planner-api` | ESM (`"type": "module"`) | >=20 | REST service over Microsoft Planner (Graph), with ETag-safe task updates, a device-code login, and a tracker UI it serves itself. |
@@ -46,6 +47,7 @@ Every app reads all environment variables in exactly one module — every
 `process.env` access lives there, and the rest of the code takes values as
 constructor arguments or imports the config object:
 
+- `apps/connector/src/config.js`
 - `apps/imessage-bot/src/config.js`
 - `apps/indesign-pipeline/src/config.js`
 - `apps/planner-api/src/config.js`

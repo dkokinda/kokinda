@@ -1,0 +1,5 @@
+Customer Email,Full Name,Plan,Seats,Signed Up,Active
+  ADA@example.com ,Ada   Lovelace,pro,"1,200",03/14/2026,yes
+grace@example.com,Grace Hopper,team,12,1/2/2026,Y
+
+linus@example.com,Linus Torvalds,free,1,12/31/2025,no
